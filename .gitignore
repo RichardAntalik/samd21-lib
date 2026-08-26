@@ -1,5 +1,5 @@
-# build output
-build/
+# build output (root dir only - tools/build/ is source!)
+/build/
 *.o
 *.elf
 *.bin
