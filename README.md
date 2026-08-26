@@ -1,14 +1,14 @@
 # samd21-lib
 
+THIS IS HIGHLY EXPERIMENTAL LIBRARY!!!
+Calling this prototype would be generous, there is ton of missing features
+with existing ones barely tested. I will keep adding them as I will need them.
+
 Bare-metal C++17 framework for the Microchip SAMD21 (SAMD21E18A). This repo
 **is** the chip library (`src/` plus its build/tools) - applications are
 separate projects created with `tools/new/samd-new`. If a `main.cpp` is
 dropped into the repo root it is additionally built as a firmware app
 (convenient scratch bench); without it `make` builds the library only.
-
-Target chip: Cortex-M0+ @ 48 MHz (DFLL 48M on GCLK0/GCLK1), 256 KB flash,
-32 KB SRAM, no FPU. Boards flashed here are Adafruit Trinket-style (USB
-serial + SAM-BA bootloader).
 
 ## Features
 
@@ -239,8 +239,6 @@ Anything in the libs root that is *not* a lib (app projects etc.) has a
   register structs and base addresses only.
 - **USB CDC-ACM** - header-only (`src/UsbCDC.h`), extracted from the
   Arduino SAMD USB stack; no external USB library.
-- **newlib** (from the toolchain) - libc string/`strtod` support, pulled in
-  only when something references it (currently: `SerialConsole`).
 - No kernel, no RTOS, no heap allocator in the library itself; C++ static
   init goes through `.init_array` handled by the startup code.
 
@@ -254,17 +252,3 @@ Anything in the libs root that is *not* a lib (app projects etc.) has a
   (not the end of `.text` - other flash sections sit in between), copied by
   startup; `.bss` zeroed
 - Minimum stack 2 KB
-
-## Gotchas for agents
-
-- Do **not** modify `SerialConsole/` (Arduino-compatibility constraint).
-- A `main.cpp` at the repo root (if present) is scratch test code; the
-  library's API is shaped by `src/`, not by the app.
-- The `Timer` enumeration in `src/Types.h` is a peripheral-instance type
-  (TCC0..TC7), NOT a time-utility name. Periodic-call/timer utilities would
-  need a proper design before getting in.
-- The SAMD21 has one ADC: `use_adc()` on a second pin re-points the input
-  mux (last pin wins); there is no per-channel conversion.
-- `use_sercom` is pin-level pad muxing; the peripheral is started by the
-  wrapper objects (e.g. `chip.i2c<N>()`).
-- GCLK0 = 48 MHz is the clock source assumed by PWM/ADC/SERCOM helpers.
