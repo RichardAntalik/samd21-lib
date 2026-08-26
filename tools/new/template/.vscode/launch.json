@@ -1,0 +1,51 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "__NAME__ debug+flash+run",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/firmware.elf",
+            "preLaunchTask": "debug+flash",
+            "gdbPath": "arm-none-eabi-gdb",
+            "configFiles": [
+                "openocd.cfg"
+            ],
+            "serverinit": [
+                "reset halt"
+            ],
+            "runToEntryPoint": "Reset_Handler",
+            "objdumpPath": "arm-none-eabi-objdump",
+            "nmPath": "arm-none-eabi-nm",
+            "gdbTargetCommands": [
+                "set mem inaccessible-by-default off",
+                "set target-async off"
+            ]
+        },
+        {
+            "name": "__NAME__ release+flash+run",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/firmware.elf",
+            "preLaunchTask": "release+flash",
+            "gdbPath": "arm-none-eabi-gdb",
+            "configFiles": [
+                "openocd.cfg"
+            ],
+            "serverinit": [
+                "reset halt"
+            ],
+            "runToEntryPoint": "Reset_Handler",
+            "objdumpPath": "arm-none-eabi-objdump",
+            "nmPath": "arm-none-eabi-nm",
+            "gdbTargetCommands": [
+                "set mem inaccessible-by-default off",
+                "set target-async off"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "debug+flash",
+            "type": "shell",
+            "command": "make SPEED=debug flash",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "release+flash",
+            "type": "shell",
+            "command": "make flash",
+            "problemMatcher": "$gcc"
+        }
+    ]
+}

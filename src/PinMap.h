@@ -1,0 +1,383 @@
+#pragma once
+#include "Types.h"
+
+// Port base addresses - SAMD21 IOBUS mapping (standard CMSIS pattern)
+constexpr uint32_t PORT_IOBUS_BASE_ADDR = 0x60000000;
+constexpr uint32_t PORTA_BASE_ADDR    = PORT_IOBUS_BASE_ADDR + 0x000;
+constexpr uint32_t PORTB_BASE_ADDR    = PORT_IOBUS_BASE_ADDR + 0x400;
+
+// PMUX function codes - match CMSIS port.h values
+constexpr uint8_t PORT_PMUX_FUNC_A = 0x0;
+constexpr uint8_t PORT_PMUX_FUNC_B = 0x1;
+constexpr uint8_t PORT_PMUX_FUNC_C = 0x2;
+constexpr uint8_t PORT_PMUX_FUNC_D = 0x3;
+constexpr uint8_t PORT_PMUX_FUNC_E = 0x4;
+constexpr uint8_t PORT_PMUX_FUNC_F = 0x5;
+constexpr uint8_t PORT_PMUX_FUNC_G = 0x6;
+constexpr uint8_t PORT_PMUX_FUNC_H = 0x7;
+
+// ============================================================================
+// Pin capability data structures
+// ============================================================================
+
+struct SercomPad {
+    uint8_t sercom_inst;
+    uint8_t pad : 2;
+};
+
+struct TimerOut {
+    uint8_t timer_inst;
+    uint8_t output : 3;
+    uint8_t pmux : 3;   // PORT function for this waveform output (PORT_PMUX_FUNC_A..H)
+};
+
+struct PinCapability {
+    uint32_t port_addr;
+    uint8_t pin_num : 5;
+    bool is_odd : 1;
+    AdcChan adc_chan : 8;
+    SercomPad sercoms[4];
+    TimerOut timers[4];
+    uint8_t usb_func : 4;
+};
+
+// Helpers for array initialization
+#define SERCOM_PAD(i, p) { static_cast<uint8_t>(SercomInst(i)), p }
+#define TIMER_OUT(t, o, m) { static_cast<uint8_t>(Timer(t)), o, m }
+#define SERCOM_END       { 0xFF, 0 }
+#define TIMER_END        { 0xFF, 0, 0 }
+#define USB_FUNC(f)      f
+
+// ============================================================================
+// Pin Capability Map - Standard 64-entry contiguous array (32 PORTA + 32 PORTB)
+// ============================================================================
+
+constexpr const PinCapability PIN_MAP[64] = {
+    // ------------------------------------------------------------------------
+    // PORTA: 0..31
+    // ------------------------------------------------------------------------
+
+    // PA00 (0): SERCOM1/PAD0, TCC2/WO0 (func E)
+    { PORTA_BASE_ADDR, 0, false, AdcChan::NONE,
+      { SERCOM_PAD(1, 0), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(2, 0, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA01 (1): SERCOM1/PAD1, TCC2/WO1 (func E)
+    { PORTA_BASE_ADDR, 1, true, AdcChan::NONE,
+      { SERCOM_PAD(1, 1), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(2, 1, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA02 (2): ADC/AIN0
+    { PORTA_BASE_ADDR, 2, false, AdcChan::AIN0,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_B) },
+
+    // PA03 (3): ADC/AIN1 (TCC3/WO1 is not available on SAMD21E)
+    { PORTA_BASE_ADDR, 3, true, AdcChan::AIN1,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA04 (4): ADC/AIN4, SERCOM0/PAD0, TCC0/WO0 (func E)
+    { PORTA_BASE_ADDR, 4, false, AdcChan::AIN4,
+      { SERCOM_PAD(0, 0), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 0, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA05 (5): ADC/AIN5, SERCOM0/PAD1, TCC0/WO1 (func E)
+    { PORTA_BASE_ADDR, 5, true, AdcChan::AIN5,
+      { SERCOM_PAD(0, 1), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 1, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA06 (6): ADC/AIN6, SERCOM0/PAD2, TCC1/WO0 (func E)
+    { PORTA_BASE_ADDR, 6, false, AdcChan::AIN6,
+      { SERCOM_PAD(0, 2), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(1, 0, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA07 (7): ADC/AIN7, SERCOM0/PAD3, TCC1/WO1 (func E)
+    { PORTA_BASE_ADDR, 7, true, AdcChan::AIN7,
+      { SERCOM_PAD(0, 3), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(1, 1, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA08 (8): SERCOM0/PAD0, SERCOM2/PAD0, TCC0/WO0 (func E), TCC1/WO2 (func F)
+    { PORTA_BASE_ADDR, 8, false, AdcChan::AIN16,
+      { SERCOM_PAD(0, 0), SERCOM_PAD(2, 0), SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 0, PORT_PMUX_FUNC_E), TIMER_OUT(1, 2, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA09 (9): SERCOM0/PAD1, SERCOM2/PAD1, TCC0/WO1 (func E), TCC1/WO3 (func F)
+    { PORTA_BASE_ADDR, 9, true, AdcChan::AIN17,
+      { SERCOM_PAD(0, 1), SERCOM_PAD(2, 1), SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 1, PORT_PMUX_FUNC_E), TIMER_OUT(1, 3, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA10 (10): SERCOM0/PAD2, SERCOM2/PAD2, TCC1/WO0 (func E), TCC0/WO2 (func F)
+    { PORTA_BASE_ADDR, 10, false, AdcChan::AIN18,
+      { SERCOM_PAD(0, 2), SERCOM_PAD(2, 2), SERCOM_END, SERCOM_END },
+      { TIMER_OUT(1, 0, PORT_PMUX_FUNC_E), TIMER_OUT(0, 2, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA11 (11): SERCOM0/PAD3, SERCOM2/PAD3, TCC1/WO1 (func E), TCC0/WO3 (func F)
+    { PORTA_BASE_ADDR, 11, true, AdcChan::AIN19,
+      { SERCOM_PAD(0, 3), SERCOM_PAD(2, 3), SERCOM_END, SERCOM_END },
+      { TIMER_OUT(1, 1, PORT_PMUX_FUNC_E), TIMER_OUT(0, 3, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA12 (12): SERCOM2/PAD0, TCC2/WO0 (func E), TCC0/WO6 (func F)
+    { PORTA_BASE_ADDR, 12, false, AdcChan::NONE,
+      { SERCOM_PAD(2, 0), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(2, 0, PORT_PMUX_FUNC_E), TIMER_OUT(0, 6, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA13 (13): SERCOM2/PAD1, TCC2/WO1 (func E), TCC0/WO7 (func F)
+    { PORTA_BASE_ADDR, 13, true, AdcChan::NONE,
+      { SERCOM_PAD(2, 1), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(2, 1, PORT_PMUX_FUNC_E), TIMER_OUT(0, 7, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA14 (14): SERCOM2/PAD2, TC3/WO0 (func E), TCC0/WO4 (func F)
+    { PORTA_BASE_ADDR, 14, false, AdcChan::NONE,
+      { SERCOM_PAD(2, 2), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(4, 0, PORT_PMUX_FUNC_E), TIMER_OUT(0, 4, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA15 (15): SERCOM2/PAD3, TC3/WO1 (func E), TCC0/WO5 (func F)
+    { PORTA_BASE_ADDR, 15, true, AdcChan::NONE,
+      { SERCOM_PAD(2, 3), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(4, 1, PORT_PMUX_FUNC_E), TIMER_OUT(0, 5, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA16 (16): SERCOM1/PAD0, SERCOM3/PAD0, TCC2/WO0 (func E), TCC0/WO6 (func F)
+    { PORTA_BASE_ADDR, 16, false, AdcChan::NONE,
+      { SERCOM_PAD(1, 0), SERCOM_PAD(3, 0), SERCOM_END, SERCOM_END },
+      { TIMER_OUT(2, 0, PORT_PMUX_FUNC_E), TIMER_OUT(0, 6, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA17 (17): SERCOM1/PAD1, SERCOM3/PAD1, TCC2/WO1 (func E), TCC0/WO7 (func F)
+    { PORTA_BASE_ADDR, 17, true, AdcChan::NONE,
+      { SERCOM_PAD(1, 1), SERCOM_PAD(3, 1), SERCOM_END, SERCOM_END },
+      { TIMER_OUT(2, 1, PORT_PMUX_FUNC_E), TIMER_OUT(0, 7, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA18 (18): SERCOM1/PAD2, SERCOM3/PAD2, TC3/WO0 (func E), TCC0/WO2 (func F)
+    { PORTA_BASE_ADDR, 18, false, AdcChan::NONE,
+      { SERCOM_PAD(1, 2), SERCOM_PAD(3, 2), SERCOM_END, SERCOM_END },
+      { TIMER_OUT(4, 0, PORT_PMUX_FUNC_E), TIMER_OUT(0, 2, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA19 (19): SERCOM1/PAD3, SERCOM3/PAD3, TC3/WO1 (func E), TCC0/WO3 (func F)
+    { PORTA_BASE_ADDR, 19, true, AdcChan::NONE,
+      { SERCOM_PAD(1, 3), SERCOM_PAD(3, 3), SERCOM_END, SERCOM_END },
+      { TIMER_OUT(4, 1, PORT_PMUX_FUNC_E), TIMER_OUT(0, 3, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA20 (20): SERCOM3/PAD2, TCC0/WO6 (func F)
+    { PORTA_BASE_ADDR, 20, false, AdcChan::NONE,
+      { SERCOM_PAD(3, 2), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 6, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA21 (21): SERCOM3/PAD3, TCC0/WO7 (func F)
+    { PORTA_BASE_ADDR, 21, true, AdcChan::NONE,
+      { SERCOM_PAD(3, 3), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 7, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA22 (22): SERCOM3/PAD0, TC4/WO0 (func E), TCC0/WO4 (func F)
+    { PORTA_BASE_ADDR, 22, false, AdcChan::NONE,
+      { SERCOM_PAD(3, 0), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(5, 0, PORT_PMUX_FUNC_E), TIMER_OUT(0, 4, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA23 (23): SERCOM3/PAD1, TC4/WO1 (func E), TCC0/WO5 (func F)
+    { PORTA_BASE_ADDR, 23, true, AdcChan::NONE,
+      { SERCOM_PAD(3, 1), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(5, 1, PORT_PMUX_FUNC_E), TIMER_OUT(0, 5, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA24 (24): USB DM, TC5/WO0 (func E), TCC1/WO2 (func F)
+    { PORTA_BASE_ADDR, 24, false, AdcChan::NONE,
+      { SERCOM_PAD(3, 2), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(6, 0, PORT_PMUX_FUNC_E), TIMER_OUT(1, 2, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_F) },
+
+    // PA25 (25): USB DP, TC5/WO1 (func E), TCC1/WO3 (func F)
+    { PORTA_BASE_ADDR, 25, true, AdcChan::NONE,
+      { SERCOM_PAD(3, 3), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(6, 1, PORT_PMUX_FUNC_E), TIMER_OUT(1, 3, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_F) },
+
+    // PA26 (26): Unused Pin Slot
+    { PORTA_BASE_ADDR, 26, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA27 (27): (TCC3/WO6 is not available on SAMD21E)
+    { PORTA_BASE_ADDR, 27, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA28 (28): (TCC3/WO7 is not available on SAMD21E)
+    { PORTA_BASE_ADDR, 28, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA29 (29): Unused Pin Slot
+    { PORTA_BASE_ADDR, 29, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA30 (30): SERCOM1/PAD2, TCC1/WO0 (func E)
+    { PORTA_BASE_ADDR, 30, false, AdcChan::NONE,
+      { SERCOM_PAD(1, 2), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(1, 0, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PA31 (31): SERCOM1/PAD3, TCC1/WO1 (func E)
+    { PORTA_BASE_ADDR, 31, true, AdcChan::NONE,
+      { SERCOM_PAD(1, 3), SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(1, 1, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // ------------------------------------------------------------------------
+    // PORTB: 32..63 (PB00..PB31)
+    // ------------------------------------------------------------------------
+
+    // PB00 (32): AIN8
+    { PORTB_BASE_ADDR, 0, false, AdcChan::AIN8,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB01 (33): AIN9
+    { PORTB_BASE_ADDR, 1, true, AdcChan::AIN9,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB02 (34): AIN10
+    { PORTB_BASE_ADDR, 2, false, AdcChan::AIN10,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB03 (35): AIN11
+    { PORTB_BASE_ADDR, 3, true, AdcChan::AIN11,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB04 (36): AIN12, TC4/WO0 (func E)
+    { PORTB_BASE_ADDR, 4, false, AdcChan::AIN12,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(5, 0, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB05 (37): AIN13, TC4/WO1 (func E)
+    { PORTB_BASE_ADDR, 5, true, AdcChan::AIN13,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(5, 1, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB06 (38): AIN14 (TCC3/WO0 is not available on SAMD21E)
+    { PORTB_BASE_ADDR, 6, false, AdcChan::AIN14,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB07 (39): AIN15 (TCC3/WO1 is not available on SAMD21E)
+    { PORTB_BASE_ADDR, 7, true, AdcChan::AIN15,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB08 (40): AIN2, TC4/WO0 (func E)
+    { PORTB_BASE_ADDR, 8, false, AdcChan::AIN2,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(5, 0, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB09 (41): AIN3, TC4/WO1 (func E)
+    { PORTB_BASE_ADDR, 9, true, AdcChan::AIN3,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(5, 1, PORT_PMUX_FUNC_E), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB10 (42): TC5/WO0 (func E), TCC0/WO4 (func F)
+    { PORTB_BASE_ADDR, 10, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(6, 0, PORT_PMUX_FUNC_E), TIMER_OUT(0, 4, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB11 (43): TC5/WO1 (func E), TCC0/WO5 (func F)
+    { PORTB_BASE_ADDR, 11, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(6, 1, PORT_PMUX_FUNC_E), TIMER_OUT(0, 5, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB12 (44): TCC0/WO6 (func F)
+    { PORTB_BASE_ADDR, 12, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 6, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB13 (45): TCC0/WO7 (func F)
+    { PORTB_BASE_ADDR, 13, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 7, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB14 (46): TC3/WO0 (func E), TCC0/WO4 (func F)
+    { PORTB_BASE_ADDR, 14, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(4, 0, PORT_PMUX_FUNC_E), TIMER_OUT(0, 4, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB15 (47): TC3/WO1 (func E), TCC0/WO5 (func F)
+    { PORTB_BASE_ADDR, 15, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(4, 1, PORT_PMUX_FUNC_E), TIMER_OUT(0, 5, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB16 (48): TCC0/WO4 (func F)
+    { PORTB_BASE_ADDR, 16, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 4, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB17 (49): TCC0/WO5 (func F)
+    { PORTB_BASE_ADDR, 17, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 5, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB18 (50): Unused Pin Slot
+    { PORTB_BASE_ADDR, 18, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB19 (51): Unused Pin Slot
+    { PORTB_BASE_ADDR, 19, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB20 (52): Unused Pin Slot
+    { PORTB_BASE_ADDR, 20, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB21 (53): Unused Pin Slot
+    { PORTB_BASE_ADDR, 21, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB22 (54): (TC7/WO0, TCC3/WO0 are not available on SAMD21E)
+    { PORTB_BASE_ADDR, 22, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB23 (55): (TC7/WO1, TCC3/WO1 are not available on SAMD21E)
+    { PORTB_BASE_ADDR, 23, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB24 (56): Unused Pin Slot
+    { PORTB_BASE_ADDR, 24, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB25 (57): Unused Pin Slot
+    { PORTB_BASE_ADDR, 25, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB26 (58): Unused Pin Slot
+    { PORTB_BASE_ADDR, 26, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB27 (59): Unused Pin Slot
+    { PORTB_BASE_ADDR, 27, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB28 (60): Unused Pin Slot
+    { PORTB_BASE_ADDR, 28, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB29 (61): Unused Pin Slot
+    { PORTB_BASE_ADDR, 29, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_END, TIMER_END, TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB30 (62): TCC0/WO0 (func E), TCC1/WO2 (func F)
+    { PORTB_BASE_ADDR, 30, false, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 0, PORT_PMUX_FUNC_E), TIMER_OUT(1, 2, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) },
+
+    // PB31 (63): TCC0/WO1 (func E), TCC1/WO3 (func F)
+    { PORTB_BASE_ADDR, 31, true, AdcChan::NONE,
+      { SERCOM_END, SERCOM_END, SERCOM_END, SERCOM_END },
+      { TIMER_OUT(0, 1, PORT_PMUX_FUNC_E), TIMER_OUT(1, 3, PORT_PMUX_FUNC_F), TIMER_END, TIMER_END }, USB_FUNC(PORT_PMUX_FUNC_A) }
+};

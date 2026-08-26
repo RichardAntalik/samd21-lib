@@ -1,0 +1,63 @@
+#!/bin/bash
+# ============================================================================
+# samd-new - scaffold a new SAMD21 app project built from tools/new/template/.
+# The project links to the central samd21-lib (nothing is copied from it
+# except a fresh openocd.cfg).
+#
+# Usage:  samd-new <name> [dir]
+#          name   project name (lowercase letters, digits, '_', '-')
+#          dir    parent directory to create it in (default: current dir)
+#
+# The generated <dir>/<name>/ is buildable immediately:
+#          cd <name> && make          # build
+#          cd <name> && make flash    # build + flash via bossac
+#
+# Library location, first match wins:
+#   make SAMD21_LIB=/path    command-line override
+#   $SAMD21_LIB              environment variable
+#   the default stamped onto the template files at generation time
+#
+# Placeholders in the template files:  __NAME__  __LIB__
+#
+# Tip: symlink into your PATH (e.g. ln -s <lib>/tools/new/samd-new ~/.local/bin/).
+# ============================================================================
+set -e
+
+usage() { echo "Usage: samd-new <name> [dir]" >&2; exit 1; }
+[ $# -ge 1 ] && [ $# -le 2 ] || usage
+NAME="$1"
+PARENT="${2:-.}"
+
+case "$NAME" in
+    '') usage ;;
+    main) echo "error: 'main' is reserved (main.cpp)" >&2; exit 1 ;;
+    *[!a-z0-9_-]*)
+        echo "error: name must be lowercase letters/digits/'_'/'-' (got: $NAME)" >&2
+        exit 1 ;;
+esac
+
+LIB="$(cd "$(dirname "$0")/../.." && pwd)"
+TPL="$LIB/tools/new/template"
+[ -d "$TPL" ] || { echo "error: template not found: $TPL" >&2; exit 1; }
+TARGET="$(cd "$PARENT" 2>/dev/null && pwd)/$NAME" || { echo "error: dir not found: $PARENT" >&2; exit 1; }
+
+if [ -e "$TARGET" ]; then
+    echo "error: refusing to touch existing path: $TARGET" >&2
+    exit 1
+fi
+
+mkdir -p "$TARGET"
+( cd "$TPL" && cp -r . "$TARGET/" )
+find "$TARGET" -type f -print0 | xargs -0 sed -i \
+    -e "s/__NAME__/$NAME/g" \
+    -e "s|__LIB__|$LIB|g"
+# Probe config is taken live from the library's debug tools
+cp -f "$LIB/tools/debug/openocd.cfg" "$TARGET/openocd.cfg"
+
+echo "Created project: $TARGET"
+echo
+echo "  cd $TARGET && make        # build"
+echo "  cd $TARGET && make flash  # build + flash"
+echo
+echo "Library: $LIB"
+echo "(projects share that library; move it + export SAMD21_LIB=/new/path and they all follow)"

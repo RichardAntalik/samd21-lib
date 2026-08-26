@@ -1,0 +1,98 @@
+#!/bin/bash
+# ============================================================================
+# samd-add-lib - wire an extra library into the build of the current project
+# (appends an entry to the project's libs.cmake - generated on first use).
+#
+# Usage:  samd-add-lib <libdir-name> [project-dir]
+#          <libdir-name>   library directory name inside the libs root
+#                          (e.g. "SerialConsole", "my-drivers")
+#          [project-dir]   project to modify (default: current directory;
+#                          it must contain a CMakeLists.txt that includes
+#                          samd-app.cmake)
+#
+# Libs root:   $SAMD21_LIBS   or   the directory containing samd21-lib
+#              (sibling layout by default:  <root>/samd21-lib  <root>/Foo)
+#
+# Only needed for MANAGED libs: a lib that ships its own CMakeLists.txt
+# (defining its own targets/flags) gets add_subdirectory()'d into the
+# project:
+#   <libs-root>/<name>/CMakeLists.txt  -> add_subdirectory() (the library
+#   defines its own targets/includes; must also be usable in out-of-tree
+#   builds)
+#
+# Header-only, or plain "headers + .c/.cpp" lib? Don't bother running this -
+# every libs-root directory without a CMakeLists.txt is automatically on the
+# include path and has its top-level .c/.cpp compiled into the firmware;
+# #include "Header.h" (flat) just works.
+#
+# Examples:
+#   samd-add-lib SerialConsole
+#   SAMD21_LIBS=~/libs samd-add-lib my-drivers ~/projects/foo
+# ============================================================================
+set -e
+
+usage() { echo "Usage: samd-add-lib <libdir-name> [project-dir]" >&2; exit 1; }
+[ $# -ge 1 ] && [ $# -le 2 ] || usage
+NAME="$1"
+PROJ="${2:-.}"
+
+case "$NAME" in
+    '') usage ;;
+    */*) echo "error: lib name must be a single directory name (got: $NAME)" >&2; exit 1 ;;
+esac
+
+# Locate the central lib (for the default libs root) from this script's place
+SELF_LIB="$(cd "$(dirname "$0")/../.." && pwd)"
+if [ -n "${SAMD21_LIBS:-}" ]; then
+    LIBS_ROOT="$(cd "$SAMD21_LIBS" && pwd)"
+else
+    LIBS_ROOT="$(cd "$SELF_LIB/.." && pwd)"
+fi
+
+LIBDIR="$LIBS_ROOT/$NAME"
+if [ ! -d "$LIBDIR" ]; then
+    echo "error: library not found: $LIBDIR" >&2
+    echo "       (libs root: $LIBS_ROOT - override with \$SAMD21_LIBS)" >&2
+    exit 1
+fi
+
+PROJ="$(cd "$PROJ" 2>/dev/null && pwd)" || { echo "error: project dir not found: $PROJ" >&2; exit 1; }
+# Generated projects have CMakeLists.txt at their root; this repo (the
+# library itself, also a runnable test bench) keeps it in tools/build/.
+CM=""
+for c in "$PROJ/CMakeLists.txt" "$PROJ/tools/build/CMakeLists.txt"; do
+    if [ -f "$c" ] && grep -q "samd-app.cmake" "$c"; then CM="$c"; break; fi
+done
+[ -n "$CM" ] || { echo "error: $PROJ does not look like a samd21-lib project (no CMakeLists.txt including samd-app.cmake)" >&2; exit 1; }
+
+VARDIR=$(printf '%s' "$NAME" | tr 'A-Z' 'a-z')
+VAR="${VARDIR^^}_LIB"            # e.g. SERIALCONSOLE_LIB / MY_DRIVERS_LIB
+SUBDIR="$VARDIR"
+
+# libs.cmake must sit next to the CMakeLists that includes it
+LIBS_CM="$(dirname "$CM")/libs.cmake"
+touch "$LIBS_CM"
+if grep -q "set($VAR " "$LIBS_CM"; then
+    echo "$NAME is already in $LIBS_CM (update it by hand)"
+    exit 0
+fi
+
+{
+    echo ""
+    echo "# $NAME - added by samd-add-lib ($(date +%Y-%m-%d))"
+    echo "if(NOT DEFINED $VAR)"
+    echo "    if(DEFINED ENV{SAMD21_LIBS})"
+    echo "        set($VAR \"\$ENV{SAMD21_LIBS}/$NAME\")"
+    echo "    else()"
+    echo "        set($VAR \"$LIBDIR\")"
+    echo "    endif()"
+    echo "endif()"
+    if [ -f "$LIBDIR/CMakeLists.txt" ]; then
+        echo "add_subdirectory(\${$VAR} \${CMAKE_BINARY_DIR}/$SUBDIR)"
+    else
+        echo "# header-only: nothing to wire - <libs-root>/*/ is on the include path automatically"
+    fi
+} >> "$LIBS_CM"
+
+echo "Added $NAME -> $LIBS_CM"
+echo "Now: reconfigure + build the project (cmake will pick up libs.cmake automatically on next 'make')."
