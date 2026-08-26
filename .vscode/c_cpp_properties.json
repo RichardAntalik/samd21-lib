@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "SAMD21",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/libs/cmsis/Core/Include",
+                "${workspaceFolder}/src/libs/cmsis/samd21a/include",
+                "${workspaceFolder}",
+                "${workspaceFolder}/../*"
+            ],
+            "defines": [
+                "__SAMD21E18A__"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-arm"
+        }
+    ],
+    "version": 4
+}
