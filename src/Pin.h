@@ -194,6 +194,7 @@ public:
         }
 
         if (tval <= 2) {
+            s_tcc_per[tval] = top & 0xFFFF;
             Tcc* tccs[] = { TCC0, TCC1, TCC2 };
             Tcc* tcc = tccs[tval];
             tcc->CTRLA.reg = TCC_CTRLA_SWRST;
@@ -201,7 +202,7 @@ public:
             tcc->CTRLA.reg |= TCC_CTRLA_PRESCALER_DIV1;
             tcc->WAVE.reg |= TCC_WAVE_WAVEGEN_NPWM;
             while (tcc->SYNCBUSY.reg & TCC_SYNCBUSY_WAVE) {}
-            tcc->PER.reg = top & 0xFFFF;
+            tcc->PER.reg = s_tcc_per[tval];
             while (tcc->SYNCBUSY.reg & TCC_SYNCBUSY_PER) {}
             tcc->CC[wo].reg = 0;
             while (tcc->SYNCBUSY.reg & (TCC_SYNCBUSY_CC0 | TCC_SYNCBUSY_CC1 |
@@ -209,6 +210,7 @@ public:
             tcc->CTRLA.reg |= TCC_CTRLA_ENABLE;
             while (tcc->SYNCBUSY.reg & TCC_SYNCBUSY_ENABLE) {}
         } else {
+            s_tc_per[tval - 4] = top & 0xFF;
             Tc* tcs[] = { TC3, TC4, TC5 };
             Tc* tc = tcs[tval - 4];
             tc->COUNT8.CTRLA.reg = TC_CTRLA_SWRST;
@@ -216,7 +218,7 @@ public:
             tc->COUNT8.CTRLA.reg = TC_CTRLA_MODE_COUNT8
                                  | TC_CTRLA_WAVEGEN_NPWM
                                  | TC_CTRLA_PRESCALER_DIV1;
-            tc->COUNT8.PER.reg = top & 0xFF;
+            tc->COUNT8.PER.reg = s_tc_per[tval - 4];
             tc->COUNT8.CC[wo & 1].reg = 0;
             while (tc->COUNT8.STATUS.reg & TC_STATUS_SYNCBUSY) {}
             tc->COUNT8.CTRLA.reg |= TC_CTRLA_ENABLE;
@@ -243,8 +245,11 @@ public:
         constexpr int slot = timer_slot();
         const uint8_t wo = PIN_MAP[pin_map_index()].timers[slot].output;
         const uint8_t tval = static_cast<uint8_t>(primary_timer());
-        const uint32_t top = (tval <= 2) ? 0xFFFFu : 0xFFu;
-        const uint32_t cmp = static_cast<uint32_t>(clamped * (float)top);
+        const uint32_t top = (tval <= 2) ? s_tcc_per[tval] : s_tc_per[tval - 4];
+        // One period spans (top + 1) counts; duty 1.0 maps to top + 1 so the
+        // match never fires and the output stays high for the whole period.
+        uint32_t cmp = static_cast<uint32_t>(clamped * (float)(top + 1));
+        if (cmp > top + 1) cmp = top + 1;
 
         if (tval <= 2) {
             Tcc* tccs[] = { TCC0, TCC1, TCC2 };
@@ -252,6 +257,7 @@ public:
             tcc->CCB[wo].reg = cmp;
             tcc->CTRLBSET.reg = TCC_CTRLBSET_CMD_UPDATE; // synchronized, glitch-free
         } else {
+            if (cmp > top) cmp = top; // CC8 is 8-bit; top is the max matchable value
             Tc* tcs[] = { TC3, TC4, TC5 };
             Tc* tc = tcs[tval - 4];
             tc->COUNT8.CC[wo & 1].reg = static_cast<uint8_t>(cmp);
@@ -414,6 +420,16 @@ public:
     }
 
 private:
+    // =====================================================================
+    // Programmed period (top count) per timer instance.
+    // Written by use_pwm(), read by duty() so the duty cycle always maps
+    // 0..1 onto the period actually in use (e.g. 318 counts for a
+    // 150 kHz PWM), not the full counter width.
+    // =====================================================================
+
+    static inline uint32_t s_tcc_per[3] = { 0xFFFF, 0xFFFF, 0xFFFF };
+    static inline uint32_t s_tc_per[3]  = { 0xFF,   0xFF,   0xFF   };
+
     // =====================================================================
     // Clock and peripheral helpers
     // =====================================================================
